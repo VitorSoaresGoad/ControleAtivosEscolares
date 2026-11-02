@@ -102,6 +102,40 @@ export async function correctActiveLoanStudent(input: {
   });
 }
 
+export async function editOccurrence(input: {
+  historyDocumentId: string;
+  occurrence: string;
+  actorEmail: string;
+  actorName: string;
+  isAdmin: boolean;
+}) {
+  const historyDocument = doc(historyRef, input.historyDocumentId);
+  const occurrence = input.occurrence.trim();
+  await runTransaction(db, async transaction => {
+    const historySnapshot = await transaction.get(historyDocument);
+    if (!historySnapshot.exists()) throw new Error('Este registro do histórico não foi encontrado.');
+    const history = historySnapshot.data() as RegistroHistorico;
+    if (!input.isAdmin && (history.ocorrencia_criada_por ?? history.email_professor) !== input.actorEmail) {
+      throw new Error('Você só pode editar ocorrências registradas por você.');
+    }
+    const equipmentDocument = history.id_equipamento;
+    const equipmentSnapshot = await transaction.get(equipmentDocument);
+    transaction.update(historyDocument, {
+      ocorrencia: occurrence,
+      ocorrencia_editada_em: serverTimestamp(),
+      ocorrencia_editada_por: input.actorEmail,
+      ocorrencia_editada_por_nome: input.actorName,
+    });
+    if (equipmentSnapshot.exists() && equipmentSnapshot.data().ultima_ocorrencia_historico_id === historySnapshot.id) {
+      transaction.update(equipmentDocument, {
+        ultima_ocorrencia: occurrence,
+        ultima_ocorrencia_editada_em: serverTimestamp(),
+        ultima_ocorrencia_editada_por: input.actorEmail,
+      });
+    }
+  });
+}
+
 export async function returnSingleEquipment(input: {
   equipment: EquipamentoComId;
   actorEmail: string;
@@ -140,11 +174,14 @@ export async function returnSingleEquipment(input: {
 
     transaction.update(historyDocument, {
       data_hora_devolucao: serverTimestamp(), ocorrencia: combinedOccurrence,
+      ocorrencia_criada_por: details ? input.actorEmail : history.ocorrencia_criada_por ?? '',
+      ocorrencia_criada_por_nome: details ? input.actorName : history.ocorrencia_criada_por_nome ?? '',
     });
     transaction.update(equipmentDocument, {
       status: newStatus, aluno_atual: '', hora_retirada: null, id_historico_atual: null,
       email_professor_atual: null, nome_professor_atual: null, atualizado_em: serverTimestamp(),
       ultima_ocorrencia: details, ultima_ocorrencia_em: serverTimestamp(), ultima_ocorrencia_email: input.actorEmail,
+      ultima_ocorrencia_historico_id: details ? historyDocument.id : null,
     });
   });
 }
@@ -156,16 +193,18 @@ export async function returnEquipmentBatch(items: EquipamentoComId[], input: { o
     for (const equipment of active.slice(offset, offset + 200)) {
       const equipmentDocument = doc(equipmentRef, equipment.documentId);
       const currentHistoryId = equipment.id_historico_atual;
+      const occurrence = input.occurrenceById[equipment.documentId]?.trim() ?? '';
       if (currentHistoryId) {
         batch.update(doc(historyRef, currentHistoryId), {
-          data_hora_devolucao: serverTimestamp(), ocorrencia: input.occurrenceById[equipment.documentId]?.trim() ?? '',
+          data_hora_devolucao: serverTimestamp(), ocorrencia: occurrence,
+          ocorrencia_criada_por: occurrence ? input.email : '',
         });
       }
       batch.update(equipmentDocument, {
         status: 'disponível', aluno_atual: '', hora_retirada: null, id_historico_atual: null,
         email_professor_atual: null, nome_professor_atual: null, atualizado_em: serverTimestamp(),
-        ultima_ocorrencia: input.occurrenceById[equipment.documentId]?.trim() ?? '',
-        ultima_ocorrencia_em: serverTimestamp(), ultima_ocorrencia_email: input.email,
+        ultima_ocorrencia: occurrence, ultima_ocorrencia_em: serverTimestamp(), ultima_ocorrencia_email: input.email,
+        ultima_ocorrencia_historico_id: occurrence ? currentHistoryId ?? null : null,
       });
     }
     await batch.commit();
@@ -223,11 +262,14 @@ export async function forceReturn(equipment: EquipamentoComId, adminEmail: strin
   batch.update(doc(historyRef, currentHistoryId), {
     data_hora_devolucao: serverTimestamp(),
     ocorrencia: finalOccurrence,
+    ocorrencia_criada_por: adminEmail,
+    ocorrencia_criada_por_nome: adminName,
   });
   batch.update(doc(equipmentRef, equipment.documentId), {
     status: 'disponível', aluno_atual: '', hora_retirada: null, id_historico_atual: null,
     email_professor_atual: null, nome_professor_atual: null, atualizado_em: serverTimestamp(),
     ultima_ocorrencia: finalOccurrence, ultima_ocorrencia_em: serverTimestamp(), ultima_ocorrencia_email: adminEmail,
+    ultima_ocorrencia_historico_id: currentHistoryId,
   });
   await batch.commit();
 }

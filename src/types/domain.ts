@@ -36,6 +36,9 @@ export interface Equipamento {
   ultima_ocorrencia?: string;
   ultima_ocorrencia_em?: Timestamp;
   ultima_ocorrencia_email?: string;
+  ultima_ocorrencia_historico_id?: string | null;
+  ultima_ocorrencia_editada_em?: Timestamp;
+  ultima_ocorrencia_editada_por?: string;
   atualizado_em?: Timestamp;
 }
 
@@ -48,6 +51,11 @@ export interface RegistroHistorico {
   data_hora_retirada: Timestamp;
   data_hora_devolucao: Timestamp | null;
   ocorrencia: string;
+  ocorrencia_criada_por?: string;
+  ocorrencia_criada_por_nome?: string;
+  ocorrencia_editada_em?: Timestamp;
+  ocorrencia_editada_por?: string;
+  ocorrencia_editada_por_nome?: string;
   nome_sala?: string;
   nome_equipamento?: string;
   numero_patrimonio?: string;
