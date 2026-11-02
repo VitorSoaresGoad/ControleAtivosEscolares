@@ -75,7 +75,7 @@ export default function LoginRoute() {
       <View style={styles.brandRow}><Image source={require('../../assets/SGEE-removebg-preview.webp')} style={styles.logo} resizeMode="contain" /><View style={styles.brandCopy}><Text style={styles.brand}>SGEE Mobile</Text><Text style={styles.brandCaption}>Gestão escolar de equipamentos</Text></View></View>
       <View style={styles.welcome}><Text style={styles.greeting}>Olá, novamente!</Text><Text style={styles.subGreeting}>Empréstimos organizados. Aula pronta para começar.</Text></View>
       <Pressable accessibilityRole="button" onPress={login} disabled={Platform.OS !== 'web' && !request} style={({ pressed }) => [styles.loginButton, pressed && { opacity: 0.82 }]}>
-        <View style={styles.loginCopy}><Text style={styles.loginTitle}>Acesso Microsoft</Text><Text style={styles.loginSubtitle}>Use sua conta institucional</Text></View><Ionicons name="arrow-forward-circle-outline" size={34} color={colors.ink} />
+        <View style={styles.loginCopy}><Text style={styles.loginTitle}>Acesso Microsoft</Text><Text style={styles.loginSubtitle}>Use uma conta Microsoft autorizada</Text></View><Ionicons name="arrow-forward-circle-outline" size={34} color={colors.ink} />
       </Pressable>
       <View style={styles.help}><Text style={styles.helpTitle}>Acesso protegido</Text><Text style={styles.helpText}>Somente contas cadastradas pela equipe de T.I. na lista autorizada podem utilizar o sistema.</Text></View>
       <View style={styles.footer}><Image source={require('../../assets/brasao-sp.svg')} style={styles.crest} resizeMode="contain" /><Text style={styles.footerText}>Governo do Estado de São Paulo</Text></View>

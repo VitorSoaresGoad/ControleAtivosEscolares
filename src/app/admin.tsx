@@ -93,7 +93,7 @@ export default function AdminRoute() {
     <SheetModal visible={userModal} title="Novo usuário autorizado" onClose={() => setUserModal(false)}>
       <Text style={styles.modalHint}>A pessoa precisa entrar uma vez com Microsoft. Copie o UID dela em Firebase Authentication → Usuários e informe abaixo.</Text>
       <Field label="UID do Firebase Authentication" placeholder="Cole o UID da conta Microsoft" autoCapitalize="none" value={userUid} onChangeText={setUserUid} />
-      <Field label="E-mail institucional" placeholder="nome@professor.educacao.sp.gov.br" autoCapitalize="none" keyboardType="email-address" value={userEmail} onChangeText={setUserEmail} />
+      <Field label="E-mail da conta Microsoft" placeholder="nome@dominio.com" autoCapitalize="none" keyboardType="email-address" value={userEmail} onChangeText={setUserEmail} />
       <Field label="Nome" placeholder="Nome do professor ou administrador" value={userName} onChangeText={setUserName} />
       <Text style={styles.roleLabel}>Perfil</Text>
       <View style={styles.roleOptions}>{(['professor', 'admin'] as Perfil[]).map(profile => <Pressable key={profile} onPress={() => setUserProfile(profile)} style={[styles.roleOption, userProfile === profile && styles.roleOptionSelected]}><Text style={[styles.roleOptionText, userProfile === profile && styles.roleOptionTextSelected]}>{profile === 'admin' ? 'Admin (T.I.)' : 'Professor'}</Text></Pressable>)}</View>

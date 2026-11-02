@@ -8,7 +8,6 @@ import type { Perfil, UsuarioAutorizado } from '../types/domain';
 type AuthState = { user: User; profile: UsuarioAutorizado } | null;
 type AuthContextValue = { session: AuthState; loading: boolean; logout: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
-const TEST_ACCOUNT_EMAIL = process.env.EXPO_PUBLIC_TEST_ACCOUNT_EMAIL?.trim().toLowerCase() ?? '';
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<AuthState>(null);
@@ -45,12 +44,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        const isInstitutionalAccount = email.endsWith('@professor.educacao.sp.gov.br');
-        const isWhitelistedTestAccount = TEST_ACCOUNT_EMAIL.length > 0 && email === TEST_ACCOUNT_EMAIL;
-        if (!isInstitutionalAccount && !isWhitelistedTestAccount) {
-          await reject('Conta institucional necessária', 'Entre usando sua conta @professor.educacao.sp.gov.br.');
-          return;
-        }
         if (data.perfil !== 'admin' && data.perfil !== 'professor') {
           await reject('Perfil inválido', 'Peça à equipe de T.I. para revisar seu cadastro.');
           return;
