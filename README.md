@@ -11,6 +11,18 @@ Aplicativo Expo / React Native para consulta de carrinhos, empréstimo e devolu�
 5. O `.firebaserc` vincula o diretório local ao projeto `gestao-equipamentos-fatec`; `firebase.json` aponta para `firestore.rules` e `firestore.indexes.json`. Com Firebase CLI autenticado, publique com `firebase deploy --only firestore:rules,firestore:indexes`. As regras do repositório são mais restritivas que as regras temporárias abertas no Console: revise e publique-as somente quando encerrar os testes.
 6. Inicie com `npx expo start`. Para login nativo com esquema `sgee`, gere um development build (`npx expo run:android` ou `npx expo run:ios`) e configure o URI correspondente ao ambiente usado no Microsoft Entra.
 
+## Gerar aplicativo Android
+
+O perfil `preview` gera um APK instalável para testes. O perfil `production` gera um AAB para publicação na Google Play.
+
+1. Entre ou crie uma conta Expo e execute `npx eas-cli@latest login`.
+2. No projeto, execute `npx eas-cli@latest build:configure` para vincular este app a um projeto EAS. Na primeira build, defina um identificador Android definitivo (`android.package`); trocá-lo depois faz o Android tratar a build como outro aplicativo.
+3. No ambiente `preview` e também em `production` no EAS, configure as variáveis `EXPO_PUBLIC_FIREBASE_API_KEY`, `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`, `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`, `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `EXPO_PUBLIC_FIREBASE_APP_ID` e `EXPO_PUBLIC_MICROSOFT_CLIENT_ID`. Configure `EXPO_PUBLIC_MICROSOFT_TENANT_ID` com o tenant institucional, ou `common` se esse for o valor usado no Microsoft Entra. O `.env` local está ignorado pelo Git e não é enviado automaticamente para builds remotas. Não cadastre o Client Secret como variável `EXPO_PUBLIC_*`.
+4. Para gerar o APK de testes, execute `npx eas-cli@latest build --platform android --profile preview`. Ao concluir, use o link do artefato para baixar e instalar no dispositivo Android.
+5. Para gerar o pacote da Google Play, execute `npx eas-cli@latest build --platform android --profile production`. Esse comando só gera o AAB; a publicação na loja é uma etapa separada.
+
+Antes da primeira build mobile, confirme que o Client ID público da aplicação Microsoft está preenchido no ambiente EAS. Sem ele, o login no app nativo não consegue iniciar.
+
 ## Fluxos implementados
 
 - Autenticação Microsoft e conferência do UID em `usuarios_autorizados` antes de liberar acesso.
