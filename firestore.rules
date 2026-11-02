@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function authorized() {
+      return signedIn() && exists(/databases/$(database)/documents/usuarios_autorizados/$(request.auth.uid));
+    }
+    function admin() {
+      return authorized() && get(/databases/$(database)/documents/usuarios_autorizados/$(request.auth.uid)).data.perfil == 'admin';
+    }
+
+    match /usuarios_autorizados/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if admin();
+      allow create, update, delete: if admin();
+    }
+    match /carrinhos/{cartId} {
+      allow read: if authorized();
+      allow create, update, delete: if admin();
+    }
+    match /equipamentos/{equipmentId} {
+      allow read: if authorized();
+      allow create, delete: if admin();
+      allow update: if admin() || (authorized()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'aluno_atual', 'hora_retirada', 'id_historico_atual',
+          'email_professor_atual', 'nome_professor_atual', 'atualizado_em',
+          'ultima_ocorrencia', 'ultima_ocorrencia_em', 'ultima_ocorrencia_email'
+        ])
+        && ((resource.data.status == 'disponível'
+            && request.resource.data.status == 'em_uso'
+            && request.resource.data.aluno_atual is string
+            && request.resource.data.aluno_atual.size() > 0
+            && request.resource.data.hora_retirada == request.time
+            && request.resource.data.atualizado_em == request.time
+            && request.resource.data.email_professor_atual == request.auth.token.email
+            && existsAfter(/databases/$(database)/documents/historico/$(request.resource.data.id_historico_atual))
+            && getAfter(/databases/$(database)/documents/historico/$(request.resource.data.id_historico_atual)).data.email_professor == request.auth.token.email
+            && getAfter(/databases/$(database)/documents/historico/$(request.resource.data.id_historico_atual)).data.data_hora_retirada == request.time
+            && getAfter(/databases/$(database)/documents/historico/$(request.resource.data.id_historico_atual)).data.data_hora_devolucao == null
+            && getAfter(/databases/$(database)/documents/historico/$(request.resource.data.id_historico_atual)).data.id_equipamento == /databases/$(database)/documents/equipamentos/$(equipmentId))
+          || (resource.data.status == 'em_uso'
+            && request.resource.data.status == 'disponível'
+            && request.resource.data.atualizado_em == request.time
+            && resource.data.email_professor_atual == request.auth.token.email
+            && resource.data.id_historico_atual is string
+            && getAfter(/databases/$(database)/documents/historico/$(resource.data.id_historico_atual)).data.data_hora_devolucao == request.time
+            && request.resource.data.ultima_ocorrencia == getAfter(/databases/$(database)/documents/historico/$(resource.data.id_historico_atual)).data.ocorrencia
+            && request.resource.data.ultima_ocorrencia_em == request.time
+            && request.resource.data.ultima_ocorrencia_email == request.auth.token.email)));
+    }
+    match /historico/{recordId} {
+      allow read: if admin() || (authorized() && resource.data.email_professor == request.auth.token.email);
+      allow create: if authorized()
+        && request.resource.data.id_registro == recordId
+        && request.resource.data.email_professor == request.auth.token.email
+        && request.resource.data.data_hora_retirada == request.time
+        && request.resource.data.data_hora_devolucao == null;
+      allow update: if admin() || (authorized()
+        && resource.data.email_professor == request.auth.token.email
+        && resource.data.data_hora_devolucao == null
+        && request.resource.data.data_hora_devolucao == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'data_hora_devolucao', 'ocorrencia'
+        ]));
+      allow delete: if admin();
+    }
+  }
+}

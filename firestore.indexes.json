@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "historico",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email_professor", "order": "ASCENDING" },
+        { "fieldPath": "data_hora_retirada", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "equipamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_carrinho", "order": "ASCENDING" },
+        { "fieldPath": "numero_patrimonio", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

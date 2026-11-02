@@ -2,6 +2,7 @@
   "expo": {
     "name": "gestao-equipamentos",
     "slug": "gestao-equipamentos",
+    "scheme": "sgee",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,7 +23,11 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-image"
+      "expo-image",
+      "expo-router",
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-web-browser"
     ]
   }
 }
