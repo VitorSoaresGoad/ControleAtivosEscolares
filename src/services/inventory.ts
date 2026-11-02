@@ -111,6 +111,9 @@ export async function returnSingleEquipment(input: {
   sendToMaintenance: boolean;
 }) {
   const occurrence = input.occurrence?.trim() ?? '';
+  if (input.sendToMaintenance && !input.isAdmin) {
+    throw new Error('Somente o Administrador pode encaminhar um notebook para manutenção.');
+  }
   if (input.sendToMaintenance && !occurrence) {
     throw new Error('Descreva o problema antes de encaminhar o notebook para manutenção.');
   }

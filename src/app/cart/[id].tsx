@@ -184,10 +184,10 @@ export default function CartRoute() {
     <SheetModal visible={singleReturnTarget !== null} title="Devolver este notebook" onClose={closeSingleReturn}>
       <Text style={styles.sheetHint}>{singleReturnTarget?.nome ?? `Notebook ${singleReturnTarget?.numero_patrimonio ?? ''}`} · aluno: {singleReturnTarget?.aluno_atual}. Esta ação encerra somente este empréstimo.</Text>
       <Field label="Ocorrência (opcional)" placeholder="Ex.: aluno preferiu outro notebook" value={singleReturnOccurrence} onChangeText={setSingleReturnOccurrence} multiline />
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: singleReturnDamaged }} onPress={() => setSingleReturnDamaged(value => !value)} style={styles.damageToggle}>
+      {isAdmin ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: singleReturnDamaged }} onPress={() => setSingleReturnDamaged(value => !value)} style={styles.damageToggle}>
         <Ionicons name={singleReturnDamaged ? 'checkbox' : 'square-outline'} size={20} color={singleReturnDamaged ? colors.orange : colors.muted} />
-        <View style={{ flex: 1 }}><Text style={styles.damageTitle}>Notebook com problema</Text><Text style={styles.damageHint}>Devolver e deixar indisponível para manutenção.</Text></View>
-      </Pressable>
+        <View style={{ flex: 1 }}><Text style={styles.damageTitle}>Encaminhar para manutenção</Text><Text style={styles.damageHint}>O notebook ficará indisponível até ser liberado pela T.I.</Text></View>
+      </Pressable> : <Text style={styles.sheetHint}>A ocorrência ficará registrada para a T.I. avaliar. Somente o Admin pode alterar o notebook para “Em Manutenção”.</Text>}
       <View style={styles.modalActions}><Button title="Cancelar" variant="secondary" disabled={savingSingleReturn} onPress={closeSingleReturn} /><Button title={singleReturnDamaged ? 'Enviar à manutenção' : 'Devolver notebook'} icon={singleReturnDamaged ? 'build-outline' : 'return-down-back-outline'} loading={savingSingleReturn} onPress={() => void confirmSingleReturn()} /></View>
     </SheetModal>
 
