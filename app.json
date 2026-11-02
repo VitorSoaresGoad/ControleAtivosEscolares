@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gestao-equipamentos",
+    "name": "SGEE Mobile",
     "slug": "gestao-equipamentos",
     "scheme": "sgee",
     "version": "1.0.0",
@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.vitorgoad.sgee",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -28,6 +29,17 @@
       "expo-secure-store",
       "expo-sharing",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "9e10cfa9-50ad-432a-acf0-2056e6e050c3"
+      }
+    },
+    "owner": "vitorgoad"
   }
 }
