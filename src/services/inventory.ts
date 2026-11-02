@@ -102,6 +102,50 @@ export async function correctActiveLoanStudent(input: {
   });
 }
 
+export async function returnSingleEquipment(input: {
+  equipment: EquipamentoComId;
+  actorEmail: string;
+  actorName: string;
+  isAdmin: boolean;
+  occurrence?: string;
+  sendToMaintenance: boolean;
+}) {
+  const occurrence = input.occurrence?.trim() ?? '';
+  if (input.sendToMaintenance && !occurrence) {
+    throw new Error('Descreva o problema antes de encaminhar o notebook para manutenção.');
+  }
+  const equipmentDocument = doc(equipmentRef, input.equipment.documentId);
+  await runTransaction(db, async transaction => {
+    const current = await transaction.get(equipmentDocument);
+    if (!current.exists()) throw new Error('Este equipamento não foi encontrado.');
+    const equipment = current.data() as Equipamento;
+    if (equipment.status !== 'em_uso') throw new Error('Este equipamento não está mais em uso. Atualize a lista.');
+    if (!input.isAdmin && equipment.email_professor_atual !== input.actorEmail) {
+      throw new Error('Você só pode devolver um empréstimo feito por você.');
+    }
+    if (!equipment.id_historico_atual) throw new Error('Não foi encontrado o registro de histórico deste empréstimo.');
+
+    const historyDocument = doc(historyRef, equipment.id_historico_atual);
+    const historySnapshot = await transaction.get(historyDocument);
+    if (!historySnapshot.exists()) throw new Error('O registro deste empréstimo não foi encontrado no histórico.');
+    const history = historySnapshot.data() as RegistroHistorico;
+    const details = input.sendToMaintenance
+      ? `Encaminhado para manutenção por ${input.actorName} (${input.actorEmail}): ${occurrence}`
+      : occurrence;
+    const combinedOccurrence = [history.ocorrencia?.trim(), details].filter(Boolean).join('\n');
+    const newStatus: StatusEquipamento = input.sendToMaintenance ? 'em_manutencao' : 'disponível';
+
+    transaction.update(historyDocument, {
+      data_hora_devolucao: serverTimestamp(), ocorrencia: combinedOccurrence,
+    });
+    transaction.update(equipmentDocument, {
+      status: newStatus, aluno_atual: '', hora_retirada: null, id_historico_atual: null,
+      email_professor_atual: null, nome_professor_atual: null, atualizado_em: serverTimestamp(),
+      ultima_ocorrencia: details, ultima_ocorrencia_em: serverTimestamp(), ultima_ocorrencia_email: input.actorEmail,
+    });
+  });
+}
+
 export async function returnEquipmentBatch(items: EquipamentoComId[], input: { occurrenceById: Record<string, string>; email: string }) {
   const active = items.filter(equipment => equipment.status === 'em_uso');
   for (let offset = 0; offset < active.length; offset += 200) {
