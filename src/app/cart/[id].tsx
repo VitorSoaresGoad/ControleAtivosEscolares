@@ -6,7 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { Screen, Header, Card, Button, Field, SheetModal, StatusPill } from '../../components/UI';
 import { db } from '../../services/firebase';
-import { changeEquipmentStatus, checkoutEquipment, deleteEquipment, forceReturn, saveEquipment, statusTone, subscribeToCartEquipment, returnEquipmentBatch } from '../../services/inventory';
+import { changeEquipmentStatus, checkoutEquipment, correctActiveLoanStudent, deleteEquipment, forceReturn, saveEquipment, statusTone, subscribeToCartEquipment, returnEquipmentBatch } from '../../services/inventory';
 import type { Carrinho, EquipamentoComId, StatusEquipamento } from '../../types/domain';
 import { STATUS_LABEL } from '../../types/domain';
 import { colors } from '../../theme';
@@ -28,6 +28,9 @@ export default function CartRoute() {
   const [search, setSearch] = useState('');
   const [students, setStudents] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState('');
+  const [correctTarget, setCorrectTarget] = useState<EquipamentoComId | null>(null);
+  const [correctedStudent, setCorrectedStudent] = useState('');
+  const [savingCorrection, setSavingCorrection] = useState(false);
   const [returnVisible, setReturnVisible] = useState(false);
   const [occurrences, setOccurrences] = useState<Record<string, string>>({});
   const [savingReturn, setSavingReturn] = useState(false);
@@ -78,6 +81,26 @@ export default function CartRoute() {
     finally { setSavingId(''); }
   }
 
+  async function saveStudentCorrection() {
+    if (!correctTarget) return;
+    setSavingCorrection(true);
+    try {
+      await correctActiveLoanStudent({
+        equipment: correctTarget,
+        student: correctedStudent,
+        actorEmail: session!.profile.email,
+        actorName: session!.profile.nome,
+        isAdmin,
+      });
+      setCorrectTarget(null);
+      setCorrectedStudent('');
+    } catch (error) {
+      Alert.alert('Não foi possível corrigir', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setSavingCorrection(false);
+    }
+  }
+
   async function returnAll() {
     setSavingReturn(true);
     try {
@@ -117,7 +140,13 @@ export default function CartRoute() {
     {returnable.length > 0 ? <Button title={`${isAdmin ? 'Devolver todos' : 'Devolver meus'} · ${returnable.length}`} icon="return-down-back-outline" onPress={() => setReturnVisible(true)} /> : null}
     <View style={styles.search}><Ionicons name="search" size={18} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Buscar notebook ou aluno…" placeholderTextColor="#98A2B3" style={styles.searchInput} /></View>
     <View style={styles.filters}>{(['todos', 'disponível', 'em_uso', 'em_manutencao'] as Filter[]).map(value => <Pressable key={value} onPress={() => setFilter(value)} style={[styles.filter, filter === value && styles.filterSelected]}><Text style={[styles.filterText, filter === value && styles.filterTextSelected]}>{value === 'todos' ? `Todos ${counts.total}` : value === 'disponível' ? `Disponíveis ${counts.available}` : value === 'em_uso' ? `Em uso ${counts.use}` : `Manutenção ${counts.maintenance}`}</Text></Pressable>)}</View>
-    {busy ? <View style={styles.centerInline}><ActivityIndicator color={colors.blue} /></View> : equipmentError ? <Card><Text style={styles.formError}>Não foi possível carregar os equipamentos: {equipmentError}</Text></Card> : visible.length === 0 ? <Card style={styles.empty}><Ionicons name="laptop-outline" size={34} color={colors.muted} /><Text style={styles.emptyText}>{search ? 'Nenhum equipamento encontrado.' : 'Nenhum notebook nesta categoria.'}</Text></Card> : visible.map(item => <EquipmentCard key={item.documentId} item={item} now={now} isAdmin={isAdmin} student={students[item.documentId] ?? ''} setStudent={value => setStudents(current => ({ ...current, [item.documentId]: value }))} saving={savingId === item.documentId} onBorrow={() => void borrow(item)} onEdit={() => setEditTarget(item)} onManage={() => { setManagerError(''); setManagerNote(''); setManageTarget(item); }} onDelete={() => { setDeleteError(''); setDeleteTarget(item); }} />)}
+    {busy ? <View style={styles.centerInline}><ActivityIndicator color={colors.blue} /></View> : equipmentError ? <Card><Text style={styles.formError}>Não foi possível carregar os equipamentos: {equipmentError}</Text></Card> : visible.length === 0 ? <Card style={styles.empty}><Ionicons name="laptop-outline" size={34} color={colors.muted} /><Text style={styles.emptyText}>{search ? 'Nenhum equipamento encontrado.' : 'Nenhum notebook nesta categoria.'}</Text></Card> : visible.map(item => <EquipmentCard key={item.documentId} item={item} now={now} isAdmin={isAdmin} canCorrectStudent={isAdmin || item.email_professor_atual === session.profile.email} student={students[item.documentId] ?? ''} setStudent={value => setStudents(current => ({ ...current, [item.documentId]: value }))} saving={savingId === item.documentId} onBorrow={() => void borrow(item)} onCorrectStudent={() => { setCorrectedStudent(item.aluno_atual); setCorrectTarget(item); }} onEdit={() => setEditTarget(item)} onManage={() => { setManagerError(''); setManagerNote(''); setManageTarget(item); }} onDelete={() => { setDeleteError(''); setDeleteTarget(item); }} />)}
+
+    <SheetModal visible={correctTarget !== null} title="Corrigir aluno do empréstimo" onClose={() => { if (!savingCorrection) { setCorrectTarget(null); setCorrectedStudent(''); } }}>
+      <Text style={styles.sheetHint}>{correctTarget?.nome ?? `Notebook ${correctTarget?.numero_patrimonio ?? ''}`} continua emprestado; somente o nome vinculado será corrigido.</Text>
+      <Field label="Nome correto do aluno" placeholder="Digite o nome do aluno" value={correctedStudent} onChangeText={setCorrectedStudent} autoCapitalize="words" />
+      <View style={styles.modalActions}><Button title="Cancelar" variant="secondary" onPress={() => { setCorrectTarget(null); setCorrectedStudent(''); }} /><Button title="Salvar correção" icon="checkmark" loading={savingCorrection} onPress={() => void saveStudentCorrection()} /></View>
+    </SheetModal>
 
     <SheetModal visible={returnVisible} title="Confirmar devolução" onClose={() => setReturnVisible(false)}>
       <Text style={styles.sheetHint}>{isAdmin ? `Devolver todos os ${returnable.length} notebooks em uso nesta sala.` : `Devolver os ${returnable.length} notebooks emprestados por você.`} Você pode registrar uma ocorrência por equipamento.</Text>
@@ -153,9 +182,9 @@ export default function CartRoute() {
   </Screen>;
 }
 
-function EquipmentCard({ item, isAdmin, student, setStudent, saving, now, onBorrow, onEdit, onManage, onDelete }: {
-  item: EquipamentoComId; isAdmin: boolean; student: string; setStudent: (value: string) => void; saving: boolean; now: number; onBorrow: () => void;
-  onEdit: () => void; onManage: () => void; onDelete: () => void;
+function EquipmentCard({ item, isAdmin, canCorrectStudent, student, setStudent, saving, now, onBorrow, onCorrectStudent, onEdit, onManage, onDelete }: {
+  item: EquipamentoComId; isAdmin: boolean; canCorrectStudent: boolean; student: string; setStudent: (value: string) => void; saving: boolean; now: number; onBorrow: () => void;
+  onCorrectStudent: () => void; onEdit: () => void; onManage: () => void; onDelete: () => void;
 }) {
   const borrowedAt = item.hora_retirada?.toDate().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const overdue = now > 0 && item.status === 'em_uso' && item.hora_retirada && now - item.hora_retirada.toMillis() >= 90 * 60 * 1000;
@@ -164,7 +193,10 @@ function EquipmentCard({ item, isAdmin, student, setStudent, saving, now, onBorr
       {isAdmin ? <View style={styles.iconActions}><Pressable accessibilityLabel="Editar notebook" onPress={onEdit}><Ionicons name="create-outline" size={19} color={colors.blue} /></Pressable><Pressable accessibilityLabel="Gerenciar notebook" onPress={onManage}><Ionicons name="build-outline" size={18} color={colors.orange} /></Pressable><Pressable accessibilityLabel="Remover notebook" onPress={onDelete}><Ionicons name="trash-outline" size={18} color={colors.red} /></Pressable></View> : null}
     </View>
     {item.status === 'disponível' ? <View style={styles.borrowRow}><TextInput value={student} onChangeText={setStudent} placeholder="Digite o nome do aluno…" placeholderTextColor="#98A2B3" style={styles.studentInput} returnKeyType="done" onSubmitEditing={onBorrow} /><Pressable onPress={onBorrow} disabled={saving} style={[styles.borrowButton, saving && { opacity: 0.6 }]}><Text style={styles.borrowButtonText}>{saving ? 'Salvando…' : 'Emprestar'}</Text></Pressable></View> : null}
-    {item.status === 'em_uso' ? <View style={styles.activeLoan}><View style={{ flex: 1 }}><Text style={styles.activeName}>{item.aluno_atual || 'Aluno não informado'}</Text><Text style={styles.activeMeta}>Retirado às {borrowedAt ?? '—'}{item.nome_professor_atual ? ` · Prof. ${item.nome_professor_atual}` : ''}</Text></View>{overdue ? <StatusPill label="Mais de 1h30" tone="red" /> : null}{isAdmin ? <Pressable onPress={onManage} accessibilityLabel="Gerenciar empréstimo" style={styles.forceButton}><Ionicons name="return-down-back-outline" size={17} color={colors.blue} /></Pressable> : null}</View> : null}
+    {item.status === 'em_uso' ? <View style={styles.activeLoan}>
+      <View style={styles.activeLoanInfo}><View style={{ flex: 1 }}><Text style={styles.activeName}>{item.aluno_atual || 'Aluno não informado'}</Text><Text style={styles.activeMeta}>Retirado às {borrowedAt ?? '—'}{item.nome_professor_atual ? ` · Prof. ${item.nome_professor_atual}` : ''}</Text></View>{overdue ? <StatusPill label="Mais de 1h30" tone="red" /> : null}{isAdmin ? <Pressable onPress={onManage} accessibilityLabel="Gerenciar empréstimo" style={styles.forceButton}><Ionicons name="return-down-back-outline" size={17} color={colors.blue} /></Pressable> : null}</View>
+      {canCorrectStudent ? <Pressable onPress={onCorrectStudent} accessibilityRole="button" accessibilityLabel="Corrigir nome do aluno" style={styles.correctionButton}><Ionicons name="create-outline" size={15} color={colors.blue} /><Text style={styles.correctionButtonText}>Corrigir aluno</Text></Pressable> : null}
+    </View> : null}
     {item.status === 'em_manutencao' ? <View style={styles.blocked}><Ionicons name="alert-circle-outline" size={16} color={colors.red} /><Text style={styles.blockedText}>Equipamento bloqueado para empréstimo</Text></View> : null}
     {item.ultima_ocorrencia ? <View style={styles.occurrence}><Ionicons name="alert-circle-outline" size={15} color={colors.red} /><Text style={styles.occurrenceText}>Ocorrência: {item.ultima_ocorrencia}</Text></View> : null}
   </Card>;
@@ -193,6 +225,6 @@ const styles = StyleSheet.create({
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, filter: { backgroundColor: colors.white, borderColor: colors.line, borderWidth: 1, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 8 }, filterSelected: { backgroundColor: colors.blue, borderColor: colors.blue }, filterText: { color: colors.muted, fontWeight: '700', fontSize: 10 }, filterTextSelected: { color: colors.white },
   equipmentCard: { padding: 13, gap: 12 }, equipmentTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 }, equipmentHeading: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }, equipmentName: { fontSize: 14, fontWeight: '800', color: colors.ink }, patrimony: { marginTop: 6, color: colors.muted, fontSize: 11 }, iconActions: { flexDirection: 'row', gap: 13, paddingTop: 2 },
   borrowRow: { flexDirection: 'row', gap: 8, alignItems: 'center' }, studentInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: colors.line, borderRadius: 10, paddingHorizontal: 11, minHeight: 42, fontSize: 12, color: colors.ink }, borrowButton: { backgroundColor: colors.blue, paddingHorizontal: 13, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, borrowButtonText: { color: colors.white, fontWeight: '800', fontSize: 12 },
-  activeLoan: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 10, backgroundColor: '#F5F6F8', padding: 10 }, activeName: { fontSize: 13, color: colors.ink, fontWeight: '800' }, activeMeta: { marginTop: 3, color: colors.muted, fontSize: 10 }, forceButton: { padding: 5 }, blocked: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 9, borderRadius: 9, backgroundColor: colors.redSoft }, blockedText: { fontSize: 11, color: colors.red, fontWeight: '700' },
+  activeLoan: { gap: 8, borderRadius: 10, backgroundColor: '#F5F6F8', padding: 10 }, activeLoanInfo: { flexDirection: 'row', alignItems: 'center', gap: 7 }, activeName: { fontSize: 13, color: colors.ink, fontWeight: '800' }, activeMeta: { marginTop: 3, color: colors.muted, fontSize: 10 }, forceButton: { padding: 5 }, correctionButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4 }, correctionButtonText: { color: colors.blue, fontWeight: '700', fontSize: 11 }, blocked: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 9, borderRadius: 9, backgroundColor: colors.redSoft }, blockedText: { fontSize: 11, color: colors.red, fontWeight: '700' },
   empty: { alignItems: 'center', paddingVertical: 28 }, emptyText: { color: colors.muted, fontSize: 13 }, formError: { color: colors.red, fontSize: 12, lineHeight: 18 }, occurrence: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', backgroundColor: colors.redSoft, padding: 8, borderRadius: 8 }, occurrenceText: { flex: 1, color: colors.red, fontSize: 11 }, sheetHint: { color: colors.muted, fontSize: 13, lineHeight: 19 }, returnItem: { backgroundColor: colors.white, borderRadius: 13, padding: 12, gap: 12 }, returnHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, returnName: { color: colors.ink, fontWeight: '800', fontSize: 13, flex: 1 }, returnStudent: { color: colors.orange, fontWeight: '700', fontSize: 12 }, modalActions: { flexDirection: 'row', gap: 9 },
 });

@@ -69,6 +69,39 @@ export async function checkoutEquipment(input: { equipment: EquipamentoComId; st
   });
 }
 
+export async function correctActiveLoanStudent(input: {
+  equipment: EquipamentoComId;
+  student: string;
+  actorEmail: string;
+  actorName: string;
+  isAdmin: boolean;
+}) {
+  const student = input.student.trim();
+  if (!student) throw new Error('Informe o nome correto do aluno.');
+  const equipmentDocument = doc(equipmentRef, input.equipment.documentId);
+  await runTransaction(db, async transaction => {
+    const current = await transaction.get(equipmentDocument);
+    if (!current.exists()) throw new Error('Este equipamento não foi encontrado.');
+    const equipment = current.data() as Equipamento;
+    if (equipment.status !== 'em_uso') throw new Error('Este equipamento não está mais em uso. Atualize a lista.');
+    if (!input.isAdmin && equipment.email_professor_atual !== input.actorEmail) {
+      throw new Error('Você só pode corrigir o nome do aluno em um empréstimo feito por você.');
+    }
+    if (!equipment.id_historico_atual) throw new Error('Não foi encontrado o registro de histórico deste empréstimo.');
+
+    const historyDocument = doc(historyRef, equipment.id_historico_atual);
+    const historySnapshot = await transaction.get(historyDocument);
+    if (!historySnapshot.exists()) throw new Error('O registro deste empréstimo não foi encontrado no histórico.');
+    const previousStudent = equipment.aluno_atual?.trim() ?? '';
+    const history = historySnapshot.data() as RegistroHistorico;
+    const correctionNote = `Correção do aluno por ${input.actorName} (${input.actorEmail}): “${previousStudent}” → “${student}”`;
+    const occurrence = [history.ocorrencia?.trim(), correctionNote].filter(Boolean).join('\n');
+
+    transaction.update(equipmentDocument, { aluno_atual: student, atualizado_em: serverTimestamp() });
+    transaction.update(historyDocument, { nome_aluno: student, ocorrencia: occurrence });
+  });
+}
+
 export async function returnEquipmentBatch(items: EquipamentoComId[], input: { occurrenceById: Record<string, string>; email: string }) {
   const active = items.filter(equipment => equipment.status === 'em_uso');
   for (let offset = 0; offset < active.length; offset += 200) {
