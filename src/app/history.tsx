@@ -41,7 +41,14 @@ export default function HistoryRoute() {
       cursor.current = snapshot.docs.at(-1) ?? null;
       hasMoreRef.current = snapshot.docs.length === PAGE_SIZE;
       setHasMore(hasMoreRef.current);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível carregar o histórico.'); }
+    } catch (reason) {
+      const code = typeof reason === 'object' && reason !== null && 'code' in reason
+        ? String(reason.code)
+        : '';
+      setError(code === 'failed-precondition'
+        ? 'O histórico está aguardando a criação do índice no Firebase. Tente novamente em alguns minutos.'
+        : 'Não foi possível carregar o histórico. Verifique sua conexão e tente novamente.');
+    }
     finally { loadingRef.current = false; setLoadingRows(false); }
   }, [session]);
 
@@ -75,7 +82,7 @@ export default function HistoryRoute() {
     <Header title={isAdmin ? 'Histórico de uso' : 'Meu histórico'} subtitle="Empréstimos e devoluções recentes" onBack={() => router.back()} />
     {isAdmin ? <Button title="Exportar histórico CSV" icon="download-outline" variant="secondary" loading={exporting} onPress={() => void exportHistory()} /> : null}
     <View style={styles.search}><Ionicons name="search" size={17} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Buscar notebook, aluno ou professor…" placeholderTextColor="#98A2B3" style={styles.searchInput} /></View>
-    {filtered.length === 0 && !loadingRows ? <Card style={styles.empty}><Ionicons name="time-outline" size={32} color={colors.muted} /><Text style={styles.emptyTitle}>{records.length === 0 ? 'Nenhum registro de uso ainda' : 'Nenhum registro encontrado'}</Text><Text style={styles.muted}>As movimentações ficam registradas aqui automaticamente.</Text></Card> : filtered.map(record => <HistoryCard key={record.documentId} record={record} />)}
+    {!error && filtered.length === 0 && !loadingRows ? <Card style={styles.empty}><Ionicons name="time-outline" size={32} color={colors.muted} /><Text style={styles.emptyTitle}>{records.length === 0 ? 'Nenhum registro de uso ainda' : 'Nenhum registro encontrado'}</Text><Text style={styles.muted}>As movimentações ficam registradas aqui automaticamente.</Text></Card> : filtered.map(record => <HistoryCard key={record.documentId} record={record} />)}
     {error ? <Card><Text style={styles.error}>{error}</Text><Button title="Tentar novamente" variant="secondary" onPress={() => void loadPage(records.length === 0)} /></Card> : null}
     {hasMore && records.length > 0 ? <Button title="Carregar mais registros" variant="secondary" loading={loadingRows} onPress={() => void loadPage()} /> : null}
     {loadingRows && records.length === 0 ? <View style={styles.centerInline}><ActivityIndicator color={colors.blue} /></View> : null}

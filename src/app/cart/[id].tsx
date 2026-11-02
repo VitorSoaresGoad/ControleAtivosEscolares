@@ -13,6 +13,10 @@ import { colors } from '../../theme';
 
 type Filter = 'todos' | 'disponível' | 'em_uso' | 'em_manutencao';
 
+function normalizeSearchText(value: string) {
+  return value.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
 export default function CartRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, loading } = useAuth();
@@ -56,7 +60,8 @@ export default function CartRoute() {
   const inUse = equipment.filter(item => item.status === 'em_uso');
   const returnable = isAdmin ? inUse : inUse.filter(item => item.email_professor_atual === session?.profile.email);
   const counts = useMemo(() => ({ total: equipment.length, available: equipment.filter(item => item.status === 'disponível').length, use: inUse.length, maintenance: equipment.filter(item => item.status === 'em_manutencao').length }), [equipment, inUse.length]);
-  const visible = useMemo(() => equipment.filter(item => (filter === 'todos' || item.status === filter) && (!search || `${item.numero_patrimonio} ${item.nome ?? ''} ${item.aluno_atual}`.toLowerCase().includes(search.toLowerCase()))), [equipment, filter, search]);
+  const normalizedSearch = normalizeSearchText(search);
+  const visible = useMemo(() => equipment.filter(item => (filter === 'todos' || item.status === filter) && (!normalizedSearch || normalizeSearchText(`${item.nome ?? ''} ${item.aluno_atual ?? ''}`).includes(normalizedSearch))), [equipment, filter, normalizedSearch]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.blue} /></View>;
   if (!session) return <Redirect href="/" />;
@@ -110,7 +115,7 @@ export default function CartRoute() {
   return <Screen>
     <Header title={cart?.nome_sala ?? 'Carregando sala…'} subtitle={`${counts.total} notebooks · ${counts.available} disponíveis`} onBack={() => router.back()} right={isAdmin ? <Pressable onPress={() => setEditTarget(null)} style={styles.addButton} accessibilityLabel="Adicionar notebook"><Ionicons name="add" size={25} color={colors.white} /></Pressable> : null} />
     {returnable.length > 0 ? <Button title={`${isAdmin ? 'Devolver todos' : 'Devolver meus'} · ${returnable.length}`} icon="return-down-back-outline" onPress={() => setReturnVisible(true)} /> : null}
-    <View style={styles.search}><Ionicons name="search" size={18} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Buscar patrimônio ou aluno…" placeholderTextColor="#98A2B3" style={styles.searchInput} /></View>
+    <View style={styles.search}><Ionicons name="search" size={18} color={colors.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Buscar notebook ou aluno…" placeholderTextColor="#98A2B3" style={styles.searchInput} /></View>
     <View style={styles.filters}>{(['todos', 'disponível', 'em_uso', 'em_manutencao'] as Filter[]).map(value => <Pressable key={value} onPress={() => setFilter(value)} style={[styles.filter, filter === value && styles.filterSelected]}><Text style={[styles.filterText, filter === value && styles.filterTextSelected]}>{value === 'todos' ? `Todos ${counts.total}` : value === 'disponível' ? `Disponíveis ${counts.available}` : value === 'em_uso' ? `Em uso ${counts.use}` : `Manutenção ${counts.maintenance}`}</Text></Pressable>)}</View>
     {busy ? <View style={styles.centerInline}><ActivityIndicator color={colors.blue} /></View> : equipmentError ? <Card><Text style={styles.formError}>Não foi possível carregar os equipamentos: {equipmentError}</Text></Card> : visible.length === 0 ? <Card style={styles.empty}><Ionicons name="laptop-outline" size={34} color={colors.muted} /><Text style={styles.emptyText}>{search ? 'Nenhum equipamento encontrado.' : 'Nenhum notebook nesta categoria.'}</Text></Card> : visible.map(item => <EquipmentCard key={item.documentId} item={item} now={now} isAdmin={isAdmin} student={students[item.documentId] ?? ''} setStudent={value => setStudents(current => ({ ...current, [item.documentId]: value }))} saving={savingId === item.documentId} onBorrow={() => void borrow(item)} onEdit={() => setEditTarget(item)} onManage={() => { setManagerError(''); setManagerNote(''); setManageTarget(item); }} onDelete={() => { setDeleteError(''); setDeleteTarget(item); }} />)}
 
