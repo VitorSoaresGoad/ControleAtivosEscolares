@@ -1,4 +1,4 @@
-import type { DocumentReference, Timestamp } from 'firebase/firestore';
+import type { DocumentReference, Timestamp } from '../services/firestore';
 
 export type Perfil = 'admin' | 'professor';
 export type StatusEquipamento = 'disponível' | 'em_uso' | 'em_manutencao';

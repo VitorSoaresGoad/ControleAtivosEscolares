@@ -1,5 +1,5 @@
 import { OAuthProvider } from 'firebase/auth';
-import { getFirestore } from "firebase/firestore";
+import { getFirestore } from './firestore';
 import { app } from './firebaseApp';
 import { auth } from './firebaseAuth';
 const microsoftProvider = new OAuthProvider('microsoft.com');

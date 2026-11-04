@@ -1,11 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { Alert } from 'react-native';
-import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from '../services/firestore';
+import { onAuthStateChanged, signOut, type AuthUser } from '../services/authSession';
 import { auth, db } from '../services/firebase';
 import type { Perfil, UsuarioAutorizado } from '../types/domain';
 
-type AuthState = { user: User; profile: UsuarioAutorizado } | null;
+type AuthState = { user: AuthUser; profile: UsuarioAutorizado } | null;
 type AuthContextValue = { session: AuthState; loading: boolean; logout: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 

@@ -1,65 +1,27 @@
 import React from 'react';
 import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Redirect } from 'expo-router';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import { signInWithPopup } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
+import BrasaoSP from '../../assets/brasao-sp.svg';
 import { useAuth } from '../contexts/AuthContext';
-import { auth, microsoftProvider } from '../services/firebase';
-import { signInWithMicrosoftAccessToken } from '../services/auth';
+import { signInWithMicrosoft } from '../services/auth';
 import { colors } from '../theme';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const tenant = process.env.EXPO_PUBLIC_MICROSOFT_TENANT_ID || 'common';
-const clientId = process.env.EXPO_PUBLIC_MICROSOFT_CLIENT_ID || '';
 
 export default function LoginRoute() {
   const { session, loading } = useAuth();
   const { width } = useWindowDimensions();
   const showWebSplitLayout = Platform.OS === 'web' && width >= 960;
-  const discovery = AuthSession.useAutoDiscovery(`https://login.microsoftonline.com/${tenant}/v2.0`);
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'sgee', path: 'auth' });
-  const [request, , promptAsync] = AuthSession.useAuthRequest({
-    clientId,
-    redirectUri,
-    responseType: AuthSession.ResponseType.Code,
-    usePKCE: true,
-    scopes: ['openid', 'profile', 'email', 'User.Read'],
-    extraParams: { prompt: 'select_account' },
-  }, discovery);
 
   async function login() {
+    let stage = 'microsoft_sign_in';
     try {
-      if (Platform.OS === 'web') {
-        await signInWithPopup(auth, microsoftProvider);
-        return;
-      }
-      if (!clientId) {
-        Alert.alert('Configuração necessária', 'Adicione EXPO_PUBLIC_MICROSOFT_CLIENT_ID ao ambiente e configure o URI de redirecionamento no Microsoft Entra.');
-        return;
-      }
-      if (!request || !discovery) return;
-      const result = await promptAsync();
-      if (result.type !== 'success') return;
-      let token = result.authentication?.accessToken;
-      if (!token && result.params.code && discovery) {
-        const exchanged = await AuthSession.exchangeCodeAsync({
-          clientId,
-          code: result.params.code,
-          redirectUri,
-          extraParams: { code_verifier: request.codeVerifier ?? '' },
-          scopes: ['openid', 'profile', 'email', 'User.Read'],
-        }, discovery);
-        token = exchanged.accessToken;
-      }
-      if (!token) throw new Error('A Microsoft não retornou o token de acesso.');
-      await signInWithMicrosoftAccessToken(token);
+      await signInWithMicrosoft();
     } catch (error) {
-      console.error('Erro de login Microsoft:', error);
-      const message = error instanceof Error ? error.message : 'Tente novamente em instantes.';
-      Alert.alert('Não foi possível entrar', message);
+      const code = typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : error instanceof Error ? error.name : 'unknown';
+      console.error('Falha no login Microsoft. Etapa:', stage, 'Código:', code);
+      Alert.alert('Não foi possível entrar', `Falha na autenticação Microsoft. Código técnico: ${code}.`);
     }
   }
 
@@ -74,11 +36,11 @@ export default function LoginRoute() {
     >
       <View style={styles.brandRow}><Image source={require('../../assets/SGEE-removebg-preview.webp')} style={styles.logo} resizeMode="contain" /><View style={styles.brandCopy}><Text style={styles.brand}>SGEE Mobile</Text><Text style={styles.brandCaption}>Gestão escolar de equipamentos</Text></View></View>
       <View style={styles.welcome}><Text style={styles.greeting}>Olá, novamente!</Text><Text style={styles.subGreeting}>Empréstimos organizados. Aula pronta para começar.</Text></View>
-      <Pressable accessibilityRole="button" onPress={login} disabled={Platform.OS !== 'web' && !request} style={({ pressed }) => [styles.loginButton, pressed && { opacity: 0.82 }]}>
+      <Pressable accessibilityRole="button" onPress={login} style={({ pressed }) => [styles.loginButton, pressed && { opacity: 0.82 }]}>
         <View style={styles.loginCopy}><Text style={styles.loginTitle}>Acesso Microsoft</Text><Text style={styles.loginSubtitle}>Use uma conta Microsoft autorizada</Text></View><Ionicons name="arrow-forward-circle-outline" size={34} color={colors.ink} />
       </Pressable>
       <View style={styles.help}><Text style={styles.helpTitle}>Acesso protegido</Text><Text style={styles.helpText}>Somente contas cadastradas pela equipe de T.I. na lista autorizada podem utilizar o sistema.</Text></View>
-      <View style={styles.footer}><Image source={require('../../assets/brasao-sp.svg')} style={styles.crest} resizeMode="contain" /><Text style={styles.footerText}>Governo do Estado de São Paulo</Text></View>
+      <View style={styles.footer}><BrasaoSP width={60} height={48} /><Text style={styles.footerText}>Governo do Estado de São Paulo</Text></View>
     </ScrollView>
     {showWebSplitLayout && <View style={styles.side}><View style={styles.sideIcon}><Ionicons name="laptop-outline" size={44} color={colors.blue} /></View><Text style={styles.sideTitle}>Tecnologia pronta para a aula.</Text><Text style={styles.sideText}>Consulte carrinhos, registre empréstimos e acompanhe cada equipamento em tempo real.</Text></View>}
   </View>;

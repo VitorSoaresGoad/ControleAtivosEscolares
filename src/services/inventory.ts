@@ -1,7 +1,7 @@
 import {
-  collection, deleteDoc, doc, onSnapshot, orderBy, query, runTransaction, serverTimestamp,
+  collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, runTransaction, serverTimestamp,
   setDoc, updateDoc, where, writeBatch, type DocumentReference, type Unsubscribe,
-} from 'firebase/firestore';
+} from './firestore';
 import { db } from './firebase';
 import type { Carrinho, CarrinhoResumo, Equipamento, EquipamentoComId, RegistroHistorico, StatusEquipamento } from '../types/domain';
 
@@ -220,7 +220,6 @@ export async function saveCart(input: { documentId?: string; name: string; capac
 
 export async function deleteCart(cartId: string) {
   const target = doc(cartsRef, cartId);
-  const { getDocs } = await import('firebase/firestore');
   const related = await getDocs(query(equipmentRef, where('id_carrinho', '==', target)));
   if (!related.empty) throw new Error('Remova ou transfira os equipamentos desta sala antes de excluí-la.');
   await deleteDoc(target);

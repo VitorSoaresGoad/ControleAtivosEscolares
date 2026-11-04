@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "333591147099",
+    "project_id": "gestao-equipamentos-fatec",
+    "storage_bucket": "gestao-equipamentos-fatec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:333591147099:android:1172252e27242b3aa6457e",
+        "android_client_info": {
+          "package_name": "com.vitorgoad.sgee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvyLTVyxrM8RSwWwhyl0xmYyf6qPNQ_cE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

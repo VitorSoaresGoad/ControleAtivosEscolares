@@ -1,4 +1,4 @@
-import { collection, doc, documentId, getDocs, onSnapshot, orderBy, query, setDoc, where, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, documentId, getDocs, onSnapshot, orderBy, query, setDoc, where, type Unsubscribe } from './firestore';
 import { db } from './firebase';
 import type { Perfil, UsuarioAutorizado, UsuarioAutorizadoComId } from '../types/domain';
 

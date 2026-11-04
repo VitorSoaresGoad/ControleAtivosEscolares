@@ -76,15 +76,20 @@ async function deleteSecureValue(key: string) {
   await Promise.all(removals);
 }
 
-const secureStorePersistence = {
-  type: 'LOCAL',
-  _isAvailable: () => SecureStore.isAvailableAsync(),
+const secureStorePersistence = class {
+  readonly type = 'LOCAL' as const;
+
+  _isAvailable() {
+    return SecureStore.isAvailableAsync();
+  }
+
   async _set(key: string, value: unknown) {
     const serialized = JSON.stringify(value);
     if (serialized === undefined) throw new Error('Não foi possível serializar a sessão de autenticação.');
     await writeSecureValue(key, serialized);
     await AsyncStorage.removeItem(key);
-  },
+  }
+
   async _get<T,>(key: string): Promise<T | null> {
     let value = await readSecureValue(key);
     if (value === null) {
@@ -103,11 +108,17 @@ const secureStorePersistence = {
       await deleteSecureValue(key);
       return null;
     }
-  },
-  _remove: deleteSecureValue,
-  _addListener: () => undefined,
-  _removeListener: () => undefined,
-  _shouldAllowMigration: true,
+  }
+
+  _remove(key: string) {
+    return deleteSecureValue(key);
+  }
+
+  _addListener() {}
+
+  _removeListener() {}
+
+  readonly _shouldAllowMigration = true;
 } as unknown as Persistence;
 
 export const auth = initializeAuth(app, {

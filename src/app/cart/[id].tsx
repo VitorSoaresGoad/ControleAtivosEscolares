@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from '../../services/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { Screen, Header, Card, Button, Field, SheetModal, StatusPill } from '../../components/UI';
 import { db } from '../../services/firebase';
